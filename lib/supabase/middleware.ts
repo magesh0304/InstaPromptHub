@@ -38,7 +38,10 @@ export async function updateSession(request: NextRequest) {
 
   const isAdminRoute = request.nextUrl.pathname.startsWith("/admin");
 
-  if (isProtectedRoute && !user) {
+  // Bypass auth redirect in mock preview environments to allow UI preview of admin/dashboard
+  const isPreviewBypass = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("mock-project");
+
+  if (isProtectedRoute && !user && !isPreviewBypass) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectTo", request.nextUrl.pathname);
