@@ -56,7 +56,7 @@ export async function getPrompts(filters: PromptFilters = {}) {
       prisma.prompt.count({ where }),
     ]);
 
-    const mappedPrompts = prompts.map((prompt) => ({
+    const mappedPrompts = prompts.map((prompt: any) => ({
       ...prompt,
       creator: (prompt.creator as any)?.profile || undefined,
       tags: prompt.tags.map((t: any) => t.tag),
