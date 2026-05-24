@@ -1,0 +1,517 @@
+// InstaPromptHub - Prisma Schema
+// Database: Supabase PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  USER
+  CREATOR
+  ADMIN
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+  CREATOR
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+  TRIALING
+}
+
+enum PromptStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  REJECTED
+  ARCHIVED
+}
+
+enum AIModel {
+  CHATGPT
+  GEMINI
+  CLAUDE
+  GROK
+  MIDJOURNEY
+  FLUX
+  STABLE_DIFFUSION
+  DALLE
+  LEONARDO
+  IDEOGRAM
+  RUNWAY
+  KLING
+  SORA
+  OTHER
+}
+
+enum PromptCategory {
+  PORTRAIT
+  CINEMATIC
+  FASHION
+  ANIME
+  REALISTIC
+  BUSINESS
+  CODING
+  MARKETING
+  EDUCATION
+  PRODUCTIVITY
+  PHOTOGRAPHY
+  ARCHITECTURE
+  LOGO
+  SOCIAL_MEDIA
+  VIDEO_CREATION
+  ART
+  DESIGN
+  OTHER
+}
+
+enum ReportReason {
+  SPAM
+  INAPPROPRIATE
+  COPYRIGHT
+  MISLEADING
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+enum NotificationType {
+  NEW_FOLLOWER
+  NEW_COMMENT
+  NEW_LIKE
+  NEW_SALE
+  NEW_REVIEW
+  PROMPT_APPROVED
+  PROMPT_REJECTED
+  SYSTEM
+}
+
+model User {
+  id                String             @id @default(cuid())
+  supabaseId        String             @unique
+  email             String             @unique
+  emailVerified     Boolean            @default(false)
+  role              UserRole           @default(USER)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  profile           Profile?
+  prompts           Prompt[]
+  likes             Like[]
+  bookmarks         Bookmark[]
+  comments          Comment[]
+  reviews           Review[]
+  copies            Copy[]
+  views             View[]
+  following         Follower[]         @relation("UserFollowing")
+  followers         Follower[]         @relation("UserFollowers")
+  notifications     Notification[]
+  subscription      Subscription?
+  payments          Payment[]
+  earnings          Earning[]
+  collections       Collection[]
+  reports           Report[]
+  sentMessages      Message[]          @relation("SentMessages")
+  receivedMessages  Message[]          @relation("ReceivedMessages")
+  referrals         Referral[]         @relation("ReferralCode")
+  referredBy        Referral?          @relation("ReferredUser")
+
+  @@map("users")
+}
+
+model Profile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  username      String   @unique
+  displayName   String
+  bio           String?  @db.Text
+  avatar        String?
+  coverBanner   String?
+  website       String?
+  twitterUrl    String?
+  githubUrl     String?
+  discordUrl    String?
+  location      String?
+  isVerified    Boolean  @default(false)
+  totalViews    Int      @default(0)
+  totalEarnings Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("profiles")
+}
+
+model Prompt {
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  title         String
+  description   String?        @db.Text
+  content       String         @db.Text
+  aiModel       AIModel
+  category      PromptCategory
+  status        PromptStatus   @default(DRAFT)
+  previewImage  String?
+  isPremium     Boolean        @default(false)
+  price         Float?
+  creatorId     String
+  viewCount     Int            @default(0)
+  likeCount     Int            @default(0)
+  copyCount     Int            @default(0)
+  bookmarkCount Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  publishedAt   DateTime?
+
+  creator           User              @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  tags              PromptTag[]
+  likes             Like[]
+  bookmarks         Bookmark[]
+  comments          Comment[]
+  reviews           Review[]
+  copies            Copy[]
+  views             View[]
+  collectionItems   CollectionItem[]
+  reports           Report[]
+  remixParent       PromptRemix?      @relation("RemixChild")
+  remixes           PromptRemix[]     @relation("RemixParent")
+
+  @@map("prompts")
+}
+
+model Tag {
+  id       String      @id @default(cuid())
+  name     String      @unique
+  slug     String      @unique
+  prompts  PromptTag[]
+
+  @@map("tags")
+}
+
+model PromptTag {
+  promptId String
+  tagId    String
+
+  prompt   Prompt @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  tag      Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([promptId, tagId])
+  @@map("prompt_tags")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  promptId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, promptId])
+  @@map("likes")
+}
+
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String
+  promptId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, promptId])
+  @@map("bookmarks")
+}
+
+model Copy {
+  id        String   @id @default(cuid())
+  userId    String
+  promptId  String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@map("copies")
+}
+
+model View {
+  id        String   @id @default(cuid())
+  userId    String?
+  promptId  String
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@map("views")
+}
+
+model Comment {
+  id        String    @id @default(cuid())
+  userId    String
+  promptId  String
+  content   String    @db.Text
+  parentId  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt    @relation(fields: [promptId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  userId    String
+  promptId  String
+  rating    Int      // 1-5
+  content   String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt   @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, promptId])
+  @@map("reviews")
+}
+
+model Follower {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@map("followers")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String?
+  data      Json?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  plan                 SubscriptionPlan   @default(FREE)
+  status               SubscriptionStatus @default(ACTIVE)
+  currentPeriodStart   DateTime?
+  currentPeriodEnd     DateTime?
+  cancelAtPeriodEnd    Boolean            @default(false)
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Payment {
+  id              String   @id @default(cuid())
+  userId          String
+  promptId        String?
+  stripePaymentId String   @unique
+  amount          Float
+  currency        String   @default("usd")
+  status          String
+  createdAt       DateTime @default(now())
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model Earning {
+  id          String   @id @default(cuid())
+  userId      String
+  promptId    String?
+  amount      Float
+  platformFee Float
+  netAmount   Float
+  paidOut     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("earnings")
+}
+
+model Collection {
+  id          String           @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  isPublic    Boolean          @default(true)
+  coverImage  String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items       CollectionItem[]
+
+  @@map("collections")
+}
+
+model CollectionItem {
+  id           String     @id @default(cuid())
+  collectionId String
+  promptId     String
+  addedAt      DateTime   @default(now())
+
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  prompt       Prompt     @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, promptId])
+  @@map("collection_items")
+}
+
+model Report {
+  id        String       @id @default(cuid())
+  userId    String
+  promptId  String
+  reason    ReportReason
+  details   String?      @db.Text
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  prompt    Prompt       @relation(fields: [promptId], references: [id], onDelete: Cascade)
+
+  @@map("reports")
+}
+
+model Message {
+  id          String   @id @default(cuid())
+  senderId    String
+  receiverId  String
+  content     String   @db.Text
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User     @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@map("messages")
+}
+
+model PromptRemix {
+  id            String   @id @default(cuid())
+  parentId      String   @unique
+  childId       String   @unique
+  createdAt     DateTime @default(now())
+
+  parent        Prompt   @relation("RemixParent", fields: [parentId], references: [id], onDelete: Cascade)
+  child         Prompt   @relation("RemixChild", fields: [childId], references: [id], onDelete: Cascade)
+
+  @@map("prompt_remixes")
+}
+
+model Referral {
+  id          String    @id @default(cuid())
+  referrerId  String
+  referredId  String    @unique
+  code        String    @unique
+  reward      Float     @default(0)
+  paidOut     Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  referrer    User      @relation("ReferralCode", fields: [referrerId], references: [id], onDelete: Cascade)
+  referred    User      @relation("ReferredUser", fields: [referredId], references: [id], onDelete: Cascade)
+
+  @@map("referrals")
+}
+
+model BlogPost {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  title       String
+  excerpt     String?
+  content     String   @db.Text
+  coverImage  String?
+  authorId    String
+  published   Boolean  @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("blog_posts")
+}
+
+model AITool {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  website     String
+  logoUrl     String?
+  category    String
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@map("ai_tools")
+}
+
+model DailyChallenge {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    PromptCategory
+  date        DateTime @unique
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@map("daily_challenges")
+}
+
+model PromptBattle {
+  id          String   @id @default(cuid())
+  promptAId   String
+  promptBId   String
+  votesA      Int      @default(0)
+  votesB      Int      @default(0)
+  isActive    Boolean  @default(true)
+  endsAt      DateTime
+  createdAt   DateTime @default(now())
+
+  @@map("prompt_battles")
+}
