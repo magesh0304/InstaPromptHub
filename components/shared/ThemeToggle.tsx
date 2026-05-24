@@ -3,9 +3,23 @@
 import { useTheme } from "next-themes";
 import { Moon, Sun } from "lucide-react";
 import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="w-9 h-9 p-2 rounded-xl text-white/60" aria-hidden="true">
+        <div className="w-5 h-5" />
+      </div>
+    );
+  }
 
   return (
     <motion.button
